@@ -12,12 +12,15 @@ import sys
 import irc.bot
 import requests
 import random
+from datetime import datetime
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, username, client_id, token, channel):
         self.client_id = client_id
         self.token = token
         self.channel = '#' + channel
+        self.begin_time = datetime.now()
+        self.stream_time = datetime.now()
 
         # Get the channel id, we will need this for v5 API calls
         url = 'https://api.twitch.tv/kraken/users?login=' + channel
@@ -58,7 +61,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         # If a chat message starts with an exclamation point, try to run it as a command
         if msg[:1] == '!':
             toks = e.arguments[0].split(' ')
-            cmd = toks[0][1:]
+            cmd = toks[0][1:].lower()
             rest = toks[1:]
             print('Received command: ' + cmd)
             self.do_command(sender, cmd, rest)
@@ -72,8 +75,10 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         c = self.connection
         info = self.info
         channel_name = info['display_name']
+        msg = None
 
         try:
+            # ======= public commands ===========
             # Poll the API to get current game.
             if cmd == "roll":
                 sides = int(arg_toks[0])
@@ -82,10 +87,36 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
             # Poll the API the get the current status of the stream
             elif cmd == "title":
-                msg = f'{channel_name} the channel title is currently {info['status']}'
+                msg = f'{channel_name} the channel title is currently "{info["status"]}"'
             
+            # display the current schedule
+            elif cmd == "schedule": 
+                msg = "currently madgen is all over the place with job interviews. streams will be on random days at random times usually starting after 7pm EST"
+            
+            elif cmd == "bot_uptime":
+                cur = datetime.now()
+                diff = cur - self.begin_time
+                msg = f"the bot has been up for {diff}"
+            
+            elif cmd == "uptime":
+                cur = datetime.now()
+                diff = cur - self.stream_time
+                msg = f"the stream has been up for {diff}"
+            
+            # ======= restricted commands =======
+            # shoutout to a user
+            if sender == 'madgen_content':
+                if cmd == "shoutout":
+                    shoutee = arg_toks[0]
+                    msg = f"{shoutee} does some great stuff! be sure to check out https://www.twitch.tv/{shoutee}"
+                elif cmd == "restart_uptime":
+                    self.stream_time = datetime.now()
+                    msg = 'stream start time reset!'
+            
+            # ===================================
+
             # The command was not recognized
-            else:
+            if msg == None:
                 msg = f"Did not recognize command: {cmd}"
         except:
             msg = f"{sender}, your {cmd} command was malformed"
