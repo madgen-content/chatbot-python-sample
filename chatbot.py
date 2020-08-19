@@ -11,6 +11,7 @@ or in the "license" file accompanying this file. This file is distributed on an 
 import sys
 import irc.bot
 import requests
+import random
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, username, client_id, token, channel):
@@ -24,59 +25,72 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         r = requests.get(url, headers=headers).json()
         self.channel_id = r['users'][0]['_id']
 
+        # get useful channel info using the id
+        url = 'https://api.twitch.tv/kraken/channels/' + self.channel_id
+        headers = {'Client-ID': self.client_id, 'Accept': 'application/vnd.twitchtv.v5+json'}
+        r = requests.get(url, headers=headers).json()
+        self.info = r
+
         # Create IRC bot connection
         server = 'irc.chat.twitch.tv'
         port = 6667
-        print 'Connecting to ' + server + ' on port ' + str(port) + '...'
+        print('Connecting to ' + server + ' on port ' + str(port) + '...')
         irc.bot.SingleServerIRCBot.__init__(self, [(server, port, 'oauth:'+token)], username, username)
+        return
         
 
     def on_welcome(self, c, e):
-        print 'Joining ' + self.channel
+        print('Joining ' + self.channel)
 
         # You must request specific capabilities before you can use them
         c.cap('REQ', ':twitch.tv/membership')
         c.cap('REQ', ':twitch.tv/tags')
         c.cap('REQ', ':twitch.tv/commands')
         c.join(self.channel)
-
-    def on_pubmsg(self, c, e):
-
-        # If a chat message starts with an exclamation point, try to run it as a command
-        if e.arguments[0][:1] == '!':
-            cmd = e.arguments[0].split(' ')[0][1:]
-            print 'Received command: ' + cmd
-            self.do_command(e, cmd)
         return
 
-    def do_command(self, e, cmd):
+    def on_pubmsg(self, c, e):
+        msg = e.arguments[0]
+        sender = e.source.split('!')[0]
+        # print message
+        print((sender, msg))
+
+        # If a chat message starts with an exclamation point, try to run it as a command
+        if msg[:1] == '!':
+            toks = e.arguments[0].split(' ')
+            cmd = toks[0][1:]
+            rest = toks[1:]
+            print('Received command: ' + cmd)
+            self.do_command(sender, cmd, rest)
+        return
+    
+    def send(self, msg):
+        self.connection.privmsg(self.channel, msg)
+        return
+
+    def do_command(self, sender, cmd, arg_toks):
         c = self.connection
+        info = self.info
+        channel_name = info['display_name']
 
-        # Poll the API to get current game.
-        if cmd == "game":
-            url = 'https://api.twitch.tv/kraken/channels/' + self.channel_id
-            headers = {'Client-ID': self.client_id, 'Accept': 'application/vnd.twitchtv.v5+json'}
-            r = requests.get(url, headers=headers).json()
-            c.privmsg(self.channel, r['display_name'] + ' is currently playing ' + r['game'])
+        try:
+            # Poll the API to get current game.
+            if cmd == "roll":
+                sides = int(arg_toks[0])
+                roll = random.randint(1, sides)
+                msg = f"{sender} you rolled a {roll} from a {sides}-sided die"
 
-        # Poll the API the get the current status of the stream
-        elif cmd == "title":
-            url = 'https://api.twitch.tv/kraken/channels/' + self.channel_id
-            headers = {'Client-ID': self.client_id, 'Accept': 'application/vnd.twitchtv.v5+json'}
-            r = requests.get(url, headers=headers).json()
-            c.privmsg(self.channel, r['display_name'] + ' channel title is currently ' + r['status'])
-
-        # Provide basic information to viewers for specific commands
-        elif cmd == "raffle":
-            message = "This is an example bot, replace this text with your raffle text."
-            c.privmsg(self.channel, message)
-        elif cmd == "schedule":
-            message = "This is an example bot, replace this text with your schedule text."            
-            c.privmsg(self.channel, message)
-
-        # The command was not recognized
-        else:
-            c.privmsg(self.channel, "Did not understand command: " + cmd)
+            # Poll the API the get the current status of the stream
+            elif cmd == "title":
+                msg = f'{channel_name} the channel title is currently {info['status']}'
+            
+            # The command was not recognized
+            else:
+                msg = f"Did not recognize command: {cmd}"
+        except:
+            msg = f"{sender}, your {cmd} command was malformed"
+        self.send(msg)
+        return
 
 def main():
     if len(sys.argv) != 5:
@@ -90,6 +104,7 @@ def main():
 
     bot = TwitchBot(username, client_id, token, channel)
     bot.start()
+    return
 
 if __name__ == "__main__":
     main()
