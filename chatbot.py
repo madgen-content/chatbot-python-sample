@@ -82,7 +82,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
             # Poll the API the get the current status of the stream
             elif cmd == "title":
-                msg = f'{channel_name} the channel title is currently {info['status']}'
+                msg = f'{channel_name} the channel title is currently "{info["status"]}"'
             
             # The command was not recognized
             else:
