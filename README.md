@@ -25,6 +25,8 @@ $ python chatbot.py <username> <client id> <token> <channel>
 * Token - Your OAuth Token *without the 'oauth:' prefix
 * Channel - the name of your 'main' channel (the one the bot will send chats to)
 
+running this command turns on the bot process. You'll see a chat log in the console. It should start responding to commands!
+
 I recommend sticking this command in a bash file (first line should be `!#/bin/sh`) that you alter to be executable but not writable or readable for safety. 
 
 ## Next Steps
