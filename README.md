@@ -11,7 +11,7 @@ $ pip install irc
 ```
 
 you also need to do some pre-work before using this project.
-1. Using your main account, log in to <dev.twitch.tv> and create an application with the category 'Chat Bot'. Give it an OAuth Redirect URL of http://localhost. Save it and copy the generated **client ID**
+1. Using your main account, log in to https://dev.twitch.tv and create an application with the category 'Chat Bot'. Give it an OAuth Redirect URL of http://localhost. Save it and copy the generated **client ID**
 2. go to your twitch settings and enable multiple account creation (so you can reuse your email for the chatbot's account)
 3. create a new chatbot account on twitch (using your channel email for convenience)
 4. go to the [Twitch Chat OAuth Password Generator](http://twitchapps.com/tmi/) **while logged in as your chatbot account**. Copy the generated token **without the initial 'oauth:' prefix**.
