@@ -13,6 +13,7 @@ import irc.bot
 import requests
 import random
 from datetime import datetime
+from collections import defaultdict
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, username, client_id, token, channel):
@@ -21,6 +22,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.channel = '#' + channel
         self.begin_time = datetime.now()
         self.stream_time = datetime.now()
+        self.mem = defaultdict(lambda: None)
 
         # Get the channel id, we will need this for v5 API calls
         url = 'https://api.twitch.tv/kraken/users?login=' + channel
@@ -84,6 +86,45 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                 sides = int(arg_toks[0])
                 roll = random.randint(1, sides)
                 msg = f"{sender} you rolled a {roll} from a {sides}-sided die"
+            
+            # Join an interactive event
+            elif cmd == "participate":
+                if len(arg_toks) > 1:
+                    self.send(f'{sender} please supply 1 string after a space for this command')
+                    return
+
+                friend_id = arg_toks[0]
+                plist = self.mem['participant_list']
+                if plist is None:
+                    plist = {}
+                    self.mem['participant_list'] = plist
+
+                plist[sender] = friend_id
+                msg = f'{sender} your friend ID, {friend_id}, has been added!'
+            
+            # show the participants in an interactive event
+            elif cmd == "participants":
+                plist = self.mem['participant_list']
+
+                if plist is None:
+                    msg = "no current participants!"
+                else:
+                    msg = 'current participants...   '
+                    for p in plist:
+                        msg += f'| {p} - {plist[p]} |'
+            
+            # unparticipate from event
+            elif cmd == "unparticipate":
+                plist = self.mem['participant_list']
+                if plist is None:
+                    msg = f"{sender} participant list is empty!"
+                else:
+                    if sender in plist:
+                        plist[sender] = None
+                        del plist[sender]
+                        msg = f"{sender} your ID has been removed"
+                    else:
+                        msg = f"{sender} you aren't currently listed!"
 
             # Poll the API the get the current status of the stream
             elif cmd == "title":
@@ -112,7 +153,9 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                 elif cmd == "restart_uptime":
                     self.stream_time = datetime.now()
                     msg = 'stream start time reset!'
-            
+                elif cmd == "flush_participants":
+                    self.mem['participant_list'] = None
+                    msg = "participants flushed!"
             # ===================================
 
             # The command was not recognized
